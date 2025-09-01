@@ -5,3 +5,11 @@ pydantic
 pydantic-settings
 gql[all]
 pyGithub
+langchain
+langgraph
+langchain-community
+langchain-core
+langchain-google-genai
+langchain-tavily
+google-search-results
+tavily-python

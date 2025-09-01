@@ -1,5 +1,6 @@
 from gql import gql
 from core.clients import graphql_client, github_client
+from utils.logging import logger
 from pprint import pprint
 
 def pygithub_search_repositories(query: str, top_K: int):
@@ -11,32 +12,39 @@ def pygithub_search_repositories(query: str, top_K: int):
     Returns:
         list: List of repository objects with basic details.
     """
+    logger.info(f"Starting PyGithub search for query: '{query}' with top_K: {top_K}")
     
-    repos = github_client.search_repositories(query=query)
-    results = []
-    for i, repo in enumerate(repos):
-        if i >= top_K:
-            break
-        results.append({
-            "id": repo.id,
-            "name": repo.name,
-            "full_name": repo.full_name,
-            "url": repo.html_url,
-            "description": repo.description,
-            "created_at": str(repo.created_at),
-            "updated_at": str(repo.updated_at),
-            "pushed_at": str(repo.pushed_at),
-            "is_archived": repo.archived,
-            "is_private": repo.private,
-            "is_fork": repo.fork,
-            "fork_count": repo.forks,
-            "stargazer_count": repo.stargazers_count,
-            "owner": {
-                "login": repo.owner.login,
-                "url": repo.owner.html_url
-            }
-        })
-    return results
+    try:
+        repos = github_client.search_repositories(query=query)
+        results = []
+        for i, repo in enumerate(repos):
+            if i >= top_K:
+                break
+            results.append({
+                "id": repo.id,
+                "name": repo.name,
+                "full_name": repo.full_name,
+                "url": repo.html_url,
+                "description": repo.description,
+                "created_at": str(repo.created_at),
+                "updated_at": str(repo.updated_at),
+                "pushed_at": str(repo.pushed_at),
+                "is_archived": repo.archived,
+                "is_private": repo.private,
+                "is_fork": repo.fork,
+                "fork_count": repo.forks,
+                "stargazer_count": repo.stargazers_count,
+                "owner": {
+                    "login": repo.owner.login,
+                    "url": repo.owner.html_url
+                }
+            })
+        
+        logger.success(f"PyGithub search completed successfully. Found {len(results)} repositories")
+        return results
+    except Exception as e:
+        logger.error(f"Error in PyGithub search for query '{query}': {e}")
+        return {"error": str(e)}
 
 def search_github_repositories(query: str, top_K: int):
     """
@@ -47,6 +55,8 @@ def search_github_repositories(query: str, top_K: int):
     Returns:
         dict: The result of the GraphQL query containing repository details.
     """
+    logger.info(f"Starting GraphQL search for query: '{query}' with top_K: {top_K}")
+    
     query_str = """
     query($query: String!, $top_K: Int!) {
     search(query: $query, type: REPOSITORY, first: $top_K) {
@@ -102,10 +112,21 @@ def search_github_repositories(query: str, top_K: int):
     }
     """
 
-    gql_query = gql(query_str)
-    variables = {"query": query, "top_K": top_K}
-    result = graphql_client.execute(gql_query, variable_values=variables)
-    return result
+    try:
+        gql_query = gql(query_str)
+        variables = {"query": query, "top_K": top_K}
+        logger.debug(f"Executing GraphQL query with variables: {variables}")
+        
+        result = graphql_client.execute(gql_query, variable_values=variables)
+        
+        # Count repositories found
+        repo_count = len(result.get("search", {}).get("edges", []))
+        logger.success(f"GraphQL search completed successfully. Found {repo_count} repositories")
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error in GraphQL search for query '{query}': {e}")
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     query = "Open React Issues"
