@@ -1,0 +1,5 @@
+pip-tools
+python-dotenv
+loguru
+pydantic
+pydantic-settings
