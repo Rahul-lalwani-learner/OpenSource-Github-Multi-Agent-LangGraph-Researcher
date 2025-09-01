@@ -3,3 +3,5 @@ python-dotenv
 loguru
 pydantic
 pydantic-settings
+gql[all]
+pyGithub

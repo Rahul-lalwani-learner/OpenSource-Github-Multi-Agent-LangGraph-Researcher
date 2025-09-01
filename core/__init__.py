@@ -1,4 +1,4 @@
 # Expose functions submodule
-from . import functions
+from . import functions, tools
 
-__all__ = ["functions"]
+__all__ = ["functions", "tools"]

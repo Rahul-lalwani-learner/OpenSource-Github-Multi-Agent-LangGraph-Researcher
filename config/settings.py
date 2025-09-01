@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     # requirements
     GITHUB_API_KEY: str
     GEMINI_API_KEY: str
+    GRAPHQL_API_ENDPOINT: str = "https://api.github.com/graphql"
 
     class Config:
         env_file = ".env"
