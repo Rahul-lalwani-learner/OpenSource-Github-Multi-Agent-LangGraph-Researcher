@@ -156,19 +156,26 @@ class QueryAgent:
                - Set appropriate max_depth (1-5) based on how detailed they want file structure
 
             3. **For search_repos**:
-               - Clean up the query for searching
+               - Generate GitHub search syntax for the query (use GitHub search qualifiers)
                - Choose search_method:
                  * "pygithub" for simple searches (basic repo info, popular repos, language-based searches)
                  * "graphql" for complex searches needing detailed info (repos with specific issue counts, PR counts, contributor info, license details, language statistics)
                - Set appropriate top_k (typically 5-10)
 
+            **GitHub Search Syntax Examples:**
+            - "find python machine learning repositories" → "python machine learning language:python"
+            - "react projects with open issues" → "react language:javascript"
+            - "most starred javascript repositories" → "language:javascript"
+            - "python repos with good issues" → "language:python good-first-issues:>1"
+            - Use qualifiers like: language:, stars:, forks:, created:, pushed:, topic:
+
             **Examples:**
             - "https://github.com/microsoft/vscode" → get_repo_info
             - "analyze this repo: https://github.com/openai/gpt-3" → get_repo_info  
-            - "find python machine learning repositories" → search_repos (pygithub)
-            - "search for JavaScript repos with more than 100 open issues" → search_repos (graphql)
-            - "popular AI projects" → search_repos (pygithub)
-            - "repos with MIT license and Python primary language" → search_repos (graphql)
+            - "find python machine learning repositories" → search_repos (pygithub), query: "python machine learning language:python"
+            - "search for JavaScript repos with open issues" → search_repos (pygithub), query: "language:javascript"
+            - "popular AI projects" → search_repos (pygithub), query: "AI machine learning"
+            - "most recent react repositories" → search_repos (pygithub), query: "react language:javascript"
 
             **User Query:** {user_query}
 
