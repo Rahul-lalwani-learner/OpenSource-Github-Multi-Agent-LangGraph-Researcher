@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     GRAPHQL_API_ENDPOINT: str = "https://api.github.com/graphql"
     SERPER_API_SECRET: str
     TAVILY_API_SECRET: str
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     class Config:
         env_file = ".env"

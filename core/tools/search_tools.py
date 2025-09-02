@@ -130,7 +130,7 @@ def get_available_search_tools() -> Dict[str, Any]:
         "serper": {
             "available": serper_search is not None,
             "description": "Google-like search for broad discovery and latest information",
-            "best_for": ["trends", "news", "general search", "real-time info"]
+            "best_for": ["trends", "news", "general search", "real-time info", "Stack Overflow"]
         },
         "tavily": {
             "available": tavily_search is not None,
