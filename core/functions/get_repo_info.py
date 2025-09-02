@@ -1,3 +1,5 @@
+from core.clients import graphql_client
+from gql import gql
 import re
 from core.clients import github_client
 from utils.logging import logger
@@ -114,13 +116,19 @@ def get_all_repo_details(repo_url: str, max_depth: int = 3) -> dict:
     # Get dependency files
     logger.debug("Fetching dependency files...")
     details["dependencies"] = get_repo_dependencies_from_url(repo_url)
-    
+
+    # Get issues
+    logger.debug("Fetching open issues...")
+    details["open_issues"] = get_repo_issues_from_url(repo_url, state="open")
+    logger.debug("Fetching closed issues...")
+    details["closed_issues"] = get_repo_issues_from_url(repo_url, state="closed")
+
     # Count successful operations
     successful_ops = sum(1 for section in details.values() if not section.get("error"))
     total_ops = len(details)
-    
+
     logger.success(f"Comprehensive repository analysis completed for {repo_url}. Success rate: {successful_ops}/{total_ops} operations")
-    
+
     return details
 
 
@@ -317,7 +325,94 @@ def get_repo_dependencies_from_url(repo_url: str) -> dict:
         logger.error(f"Error fetching dependencies for {owner}/{repo_name}: {e}")
         return {"error": str(e)}
 
+
+def get_repo_issues_from_url(repo_url: str, state: str = "open") -> dict:
+        """
+        Fetch the last 20 issues from a GitHub repository using GraphQL, filtered by state.
+        Args:
+                repo_url (str): The full GitHub repository URL (e.g., https://github.com/owner/repo).
+                state (str): Issue state, either "open", "closed", or "all". Default is "open".
+        Returns:
+                dict: Contains a list of issues with details, or 'error' (str) if not found/invalid.
+        """
+        logger.info(f"Fetching last 20 {state} issues for repository: {repo_url} using GraphQL")
+        pattern = r"https?://github.com/([^/]+)/([^/]+)(?:/)?$"
+        match = re.match(pattern, repo_url)
+        if not match:
+                logger.warning(f"Invalid GitHub repository URL format: {repo_url}")
+                return {"error": "Invalid GitHub repository URL format."}
+        owner, repo_name = match.groups()
+        logger.debug(f"Extracted owner: {owner}, repo: {repo_name}")
+        try:
+                query_str = """
+                query($owner: String!, $name: String!, $state: [IssueState!], $limit: Int!) {
+                    repository(owner: $owner, name: $name) {
+                        issues(first: $limit, states: $state, orderBy: {field: CREATED_AT, direction: DESC}) {
+                            edges {
+                                node {
+                                    id
+                                    number
+                                    title
+                                    body
+                                    state
+                                    createdAt
+                                    updatedAt
+                                    closedAt
+                                    author {
+                                        login
+                                        url: resourcePath
+                                    }
+                                    labels(first: 10) {
+                                        nodes {
+                                            name
+                                        }
+                                    }
+                                    comments {
+                                        totalCount
+                                    }
+                                    url
+                                }
+                            }
+                        }
+                    }
+                }
+                """
+                gql_query = gql(query_str)
+                variables = {
+                        "owner": owner,
+                        "name": repo_name,
+                        "state": [state.upper()] if state != "all" else ["OPEN", "CLOSED"],
+                        "limit": 20
+                }
+                result = graphql_client.execute(gql_query, variable_values=variables)
+                edges = result.get("repository", {}).get("issues", {}).get("edges", [])
+                issue_list = []
+                for edge in edges:
+                        node = edge["node"]
+                        issue_list.append({
+                                "id": node["id"],
+                                "number": node["number"],
+                                "title": node["title"],
+                                "body": node["body"],
+                                "state": node["state"],
+                                "created_at": node["createdAt"],
+                                "updated_at": node["updatedAt"],
+                                "closed_at": node.get("closedAt"),
+                                "user": {
+                                        "login": node["author"]["login"] if node.get("author") else None,
+                                        "url": node["author"].get("url") if node.get("author") else None
+                                },
+                                "labels": [label["name"] for label in node.get("labels", {}).get("nodes", [])],
+                                "comments": node.get("comments", {}).get("totalCount", 0),
+                                "url": node["url"]
+                        })
+                logger.success(f"Fetched {len(issue_list)} {state} issues for {owner}/{repo_name} using GraphQL")
+                return {"issues": issue_list, "count": len(issue_list)}
+        except Exception as e:
+                logger.error(f"Error fetching issues for {owner}/{repo_name} via GraphQL: {e}")
+                return {"error": str(e)}
+    
 if __name__ == "__main__":
-    repo_url = "https://github.com/Rahul-lalwani-learner/excalidraw-draw-app"
+    repo_url = "https://github.com/calcom/cal.com"
     all_details = get_all_repo_details(repo_url, max_depth=2)
     pprint(all_details)
